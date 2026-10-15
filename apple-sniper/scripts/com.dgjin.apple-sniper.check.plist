@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- macOS 定时检查（替代 cron）。安装：
+       cp scripts/com.dgjin.apple-sniper.check.plist ~/Library/LaunchAgents/
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dgjin.apple-sniper.check.plist
+     卸载：
+       launchctl bootout gui/$(id -u)/com.dgjin.apple-sniper.check
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dgjin.apple-sniper.check</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/dgjin/dgjinapp/apple-sniper/scripts/cron-check.sh</string>
+    </array>
+
+    <!-- 每 60 秒跑一轮；RunAtLoad 让装载后立刻先跑一次 -->
+    <key>StartInterval</key>
+    <integer>60</integer>
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- 跑在图形登录会话里：这样 open_url_on_hit 与 macOS 桌面通知才有效 -->
+    <key>LimitLoadToSessionType</key>
+    <string>Aqua</string>
+
+    <key>StandardOutPath</key>
+    <string>/Users/dgjin/dgjinapp/apple-sniper/data/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/dgjin/dgjinapp/apple-sniper/data/launchd.err.log</string>
+</dict>
+</plist>

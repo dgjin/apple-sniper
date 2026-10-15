@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>apple-sniper · 到货监控</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #121822;
+    --panel-2: #161e2a;
+    --line: #1f2937;
+    --text: #e6edf3;
+    --muted: #8b98a8;
+    --ok: #35c48d;
+    --warn: #e0b04a;
+    --danger: #f0616d;
+    --info: #58a6ff;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 22px 60px; }
+  header { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; justify-content: space-between; }
+  h1 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: .2px; }
+  h2 { margin: 0 0 12px; font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: .6px; }
+  .sub { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+  .tools { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+  button {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 11px; font-size: 12px; cursor: pointer;
+  }
+  button:hover { border-color: #2f3d4f; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; margin-right: 6px; }
+  .dot.stale { background: var(--danger); }
+  .banner {
+    display: none; margin: 16px 0 0; padding: 10px 14px; border-radius: 10px;
+    border: 1px solid #4a2530; background: #1d1218; color: #ffb3bb; font-size: 13px;
+  }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 22px 0 26px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+  .card .k { color: var(--muted); font-size: 12px; }
+  .card .v { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 24px; font-weight: 600; margin-top: 6px; }
+  section { margin-top: 26px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); font-size: 13px; vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; background: var(--panel-2); }
+  tr:last-child td { border-bottom: none; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid transparent; }
+  .badge.ok { color: var(--ok); background: rgba(53,196,141,.12); border-color: rgba(53,196,141,.3); }
+  .badge.off { color: var(--muted); background: rgba(139,152,168,.1); border-color: rgba(139,152,168,.22); }
+  .badge.warn { color: var(--warn); background: rgba(224,176,74,.12); border-color: rgba(224,176,74,.3); }
+  .badge.info { color: var(--info); background: rgba(88,166,255,.12); border-color: rgba(88,166,255,.3); }
+  .badge.danger { color: var(--danger); background: rgba(240,97,109,.12); border-color: rgba(240,97,109,.3); }
+  a { color: var(--info); text-decoration: none; word-break: break-all; }
+  a:hover { text-decoration: underline; }
+  .muted { color: var(--muted); }
+  .list { max-height: 420px; overflow: auto; }
+  .row { display: flex; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); align-items: baseline; }
+  .row:last-child { border-bottom: none; }
+  .row .at { color: var(--muted); font-size: 12px; min-width: 148px; }
+  .row .body { flex: 1; }
+  .empty { padding: 22px 14px; color: var(--muted); font-size: 13px; }
+  footer { margin-top: 34px; color: var(--muted); font-size: 12px; line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>apple-sniper · 到货监控</h1>
+      <p class="sub" id="meta">加载中…</p>
+    </div>
+    <div class="tools">
+      <span><span class="dot" id="dot"></span><span id="status">连接中</span></span>
+      <button id="refresh">立即刷新</button>
+    </div>
+  </header>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="cards" id="cards"></div>
+
+  <section>
+    <h2>目标状态</h2>
+    <div class="panel"><table>
+      <thead><tr><th>目标</th><th>状态</th><th>价格</th><th>持续</th><th>最近检查</th><th>最近事件</th><th>链接</th></tr></thead>
+      <tbody id="targets"><tr><td colspan="7" class="empty">加载中…</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>事件流</h2>
+    <div class="panel list" id="events"><div class="empty">加载中…</div></div>
+  </section>
+
+  <footer>
+    本页只读、仅绑本机；数据来自状态库的最近快照。要改配置请编辑 <span class="mono">config/*.yaml</span> 后重启 <span class="mono">apple-sniper watch</span>。
+  </footer>
+</div>
+
+<script>
+const REFRESH_MS = 5000;
+const REFRESH_LABEL = { back_in_stock: '已到货', out_of_stock: '已无货', price_drop: '降价', error: '抓取异常', recovered: '恢复正常' };
+const EVENT_CLASS = { back_in_stock: 'ok', out_of_stock: 'off', price_drop: 'info', error: 'danger', recovered: 'info' };
+const STATE_CLASS = { in_stock: 'ok', out_of_stock: 'off', unknown: 'warn' };
+
+const $ = (id) => document.getElementById(id);
+const el = (tag, props = {}, children = []) => {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(props)) {
+    if (key === 'class') node.className = value;
+    else if (key === 'text') node.textContent = value;
+    else node.setAttribute(key, value);
+  }
+  for (const child of [].concat(children)) if (child) node.appendChild(child);
+  return node;
+};
+
+function localTime(iso) {
+  const date = new Date(iso);
+  return isNaN(date) ? iso : date.toLocaleString('zh-CN', { hour12: false });
+}
+
+function card(label, value, tone) {
+  return el('div', { class: 'card' }, [
+    el('div', { class: 'k', text: label }),
+    el('div', { class: 'v', text: String(value), style: tone ? `color:${tone}` : '' }),
+  ]);
+}
+
+function renderCards(counts) {
+  $('cards').replaceChildren(
+    card('监控目标', counts.targets),
+    card('有货', counts.in_stock ?? 0, 'var(--ok)'),
+    card('无货', counts.out_of_stock ?? 0),
+    card('数据陈旧', counts.stale ?? 0, 'var(--danger)'),
+    card('尚未检查', counts.unknown ?? 0, 'var(--warn)')
+  );
+}
+
+function renderTargets(targets) {
+  const body = $('targets');
+  if (!targets.length) {
+    body.replaceChildren(el('tr', {}, [el('td', { colspan: '7', class: 'empty', text: '配置里还没有目标' })]));
+    return;
+  }
+  body.replaceChildren(...targets.map((target) => {
+    const state = target.state;
+    const badge = el('span', {
+      class: 'badge ' + (state ? STATE_CLASS[state.availability] ?? 'off' : 'warn'),
+      text: state ? state.availability_label : '尚未检查',
+    });
+    if (state && state.stale) badge.appendChild(el('span', { class: 'muted', text: ` ⚠ 连续 ${state.consecutive_errors} 次失败` }));
+    const link = el('a', { href: target.action_url, target: '_blank', rel: 'noreferrer', text: '打开' });
+    return el('tr', {}, [
+      el('td', {}, [
+        el('div', { text: target.name }),
+        el('div', { class: 'muted mono', text: `${target.id} · ${target.kind}${target.enabled ? '' : ' · 已停用'}` }),
+      ]),
+      el('td', {}, [badge]),
+      el('td', { class: 'mono', text: state && state.last_price != null ? `¥${Number(state.last_price).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}` : '-' }),
+      el('td', { class: 'muted mono', text: state ? localTime(state.since) : '-' }),
+      el('td', { class: 'muted mono', text: state ? localTime(state.last_checked) : '-' }),
+      el('td', { class: 'muted', text: state && state.last_event_label ? `${state.last_event_label}（${localTime(state.last_event_at)}）` : '-' }),
+      el('td', {}, [link]),
+    ]);
+  }));
+}
+
+function renderEvents(events) {
+  const box = $('events');
+  if (!events.length) {
+    box.replaceChildren(el('div', { class: 'empty', text: '暂无事件。命中、无货、降价与抓取异常都会记录在这里。' }));
+    return;
+  }
+  box.replaceChildren(...events.map((event) => el('div', { class: 'row' }, [
+    el('div', { class: 'at mono', text: localTime(event.at) }),
+    el('span', { class: 'badge ' + (EVENT_CLASS[event.kind] ?? 'off'), text: event.label ?? REFRESH_LABEL[event.kind] ?? event.kind }),
+    el('div', { class: 'body' }, [
+      el('div', { text: event.message }),
+      el('div', { class: 'muted mono', text: event.target_id + (event.price != null ? ` · ¥${event.price}` : '') }),
+    ]),
+  ])));
+}
+
+function render(data) {
+  const settings = data.settings;
+  $('meta').textContent = `配置 ${data.config_dir} · 状态库 ${settings.state_db} · 间隔 ${settings.interval_seconds}s · ` +
+    `渠道 ${settings.channels.join('、')} · 数据时间 ${localTime(data.generated_at)}`;
+  renderCards(data.counts);
+  renderTargets(data.targets);
+  renderEvents(data.events);
+}
+
+async function load() {
+  try {
+    const response = await fetch('/api/state', { cache: 'no-store' });
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    render(await response.json());
+    $('status').textContent = '已连接';
+    $('dot').classList.remove('stale');
+    $('banner').style.display = 'none';
+  } catch (err) {
+    $('status').textContent = '连接失败';
+    $('dot').classList.add('stale');
+    $('banner').textContent = `无法读取看板数据：${err.message}。请确认 apple-sniper serve 仍在运行（每隔 ${REFRESH_MS / 1000}s 自动重试）。`;
+    $('banner').style.display = 'block';
+  }
+}
+
+$('refresh').addEventListener('click', load);
+load();
+setInterval(load, REFRESH_MS);
+</script>
+</body>
+</html>

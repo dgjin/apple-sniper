@@ -1,0 +1,20 @@
+# 离线演示目标：全部走 mock 来源，读本地 demo/inventory.json，不联网。
+
+targets:
+  - id: demo-iphone
+    name: 演示用 iPhone（mock）
+    kind: mock
+    interval_seconds: 2
+    url: "mock://demo-iphone"
+    buy_url: "https://example.com/buy/demo-iphone"
+    match:
+      inventory_file: demo/inventory.json
+
+  - id: demo-airpods
+    name: 演示用 AirPods（mock）
+    kind: mock
+    interval_seconds: 2
+    url: "mock://demo-airpods"
+    buy_url: "https://example.com/buy/demo-airpods"
+    match:
+      inventory_file: demo/inventory.json

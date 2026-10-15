@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apple-sniper"
+description = "Apple 产品到货监控与抢购辅助：多目标低频轮询 + 状态机去重 + 多渠道通知 + 本地看板"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "httpx>=0.27",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dashboard = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+apple-sniper = "apple_sniper.cli:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "apple_sniper.__version__" }
+
+[tool.setuptools]
+packages = ["apple_sniper", "apple_sniper.sources", "apple_sniper.notify"]
+
+[tool.setuptools.package-data]
+apple_sniper = ["static/*.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

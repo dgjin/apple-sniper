@@ -1,0 +1,4 @@
+{
+  "demo-iphone": {"available": false, "price": 9999, "detail": "演示：初始无货"},
+  "demo-airpods": {"available": true, "price": 1899, "detail": "演示：初始有货"}
+}

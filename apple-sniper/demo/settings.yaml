@@ -1,0 +1,25 @@
+# 离线演示用配置（配合 scripts/demo.sh 或直接 `apple-sniper --config-dir demo`）
+# 节奏调快、抖动关掉，纯本地 mock 来源，不打任何真实站点。
+
+interval_seconds: 2
+jitter_ratio: 0.0
+min_host_interval_seconds: 1
+max_requests_per_minute: 60
+timeout_seconds: 5
+retries: 1
+backoff_base_seconds: 0.5
+
+state_db: tmp/demo-state.db
+heartbeat_seconds: 600
+renotify_cooldown_seconds: 60
+
+open_url_on_hit: false
+
+notify_kinds:
+  - back_in_stock
+  - out_of_stock
+  - price_drop
+  - error
+
+channels:
+  - kind: console

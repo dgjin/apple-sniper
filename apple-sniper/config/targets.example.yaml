@@ -1,0 +1,97 @@
+# 监控目标
+#
+# 用法：cp config/targets.example.yaml config/targets.yaml 后按需修改。
+#
+# 一个目标 = 一个 URL + 一种「怎么判断有货」的来源类型：
+#   mock               读本地 JSON 文件（演示/测试，不联网）
+#   generic_json       接口返回 JSON + 点路径 + 判定表达式
+#   html_regex         HTML 页面 + 正则命中 / 未命中
+#   apple_fulfillment  Apple 官网「到店取货」可用性（路径可配；**仅非中国区**）
+#
+# 中国区别用 apple_fulfillment：`/shop/fulfillment-messages` 在中国区已失效（实测返回 541）。
+# 中国区的真实库存接口是 `/shop/sba/availability-message`，按 `generic_json` 配（见下面的 iphone-duo-cn）。
+#
+# 判定表达式（match.when）：
+#   exists | not_exists | non_empty | truthy
+#   equals:v | not_equals:v | contains:v | not_contains:v | gt:n | gte:n | lt:n | lte:n
+#
+# 换站点时的正确做法：先用 `apple-sniper probe <id>` 把真实响应打出来，
+# 照着真实字段名填 path / present / absent，而不是靠猜。
+
+targets:
+  # ---- iPhone Duo 1TB · 北京西单大悦城（已联网核对，中国区）-----------------
+  #
+  # 「命中后直达加入购物袋页 + 升级提醒」的完整可用示例，字段已用真实响应核对：
+  #   * url      —— Apple 的 /shop/sba/availability-message（公开接口，无需登录），
+  #                 带 parts.0=<部件号> 与 store=<门店号>，返回 JSON。
+  #   * buy_url  —— 命中后直接打开**已预选好型号**的购买页（此处 1TB 夜空色），
+  #                 你只需在几秒内点「放入购物袋 → 结账」。deep link 末尾的 /a 不能少。
+  #   * match    —— path 指到 JSON 里的 isBuyable 布尔字段，true 即「已可购买」。
+  #                 注意它在 body.content[0].deliveryMessage 下，不在 content[0] 下。
+  #
+  # 已核对事实（2026-10-15 实测 Apple 中国官网）：
+  #   部件号  MK2U4CH/A = iPhone Duo 1TB 夜空色（¥21,499）｜MK2T4CH/A = 1TB 星光白色
+  #   门店号  R388     = Apple Store 西单大悦城（北京）
+  #   颜色    iPhone Duo 只有「星光白色 / 夜空色」两种，**没有深空灰**；
+  #           深色款是「夜空色」。✅ 已确认按「夜空色」配置（本项即该配置；
+  #           要换星光白色，把 sku 与 part_number 同时改成 mk2t4ch / MK2T4CH/A）。
+  #   当前   尚未开卖（10/16 20:00 预购、10/23 发售），接口实测 isBuyable=false。
+  #
+  # 换机型/换门店时仍先用 probe 核对真实响应：
+  #   .venv/bin/python -m apple_sniper --config-dir config probe iphone-duo-cn
+  - id: iphone-duo-cn
+    name: iPhone Duo 1TB 夜空色（北京西单大悦城）
+    kind: generic_json
+    enabled: false
+    interval_seconds: 60
+    url: "https://www.apple.com.cn/shop/sba/availability-message?parts.0={part_number}&store={store}&fae=true"
+    buy_url: "https://www.apple.com.cn/shop/buy-iphone/iphone-duo/{sku}/a"
+    match:
+      params:
+        part_number: "MK2U4CH/A"   # 1TB 夜空色（深色款）；星光白色为 MK2T4CH/A
+        store: "R388"              # 北京西单大悦城
+        sku: "mk2u4ch"             # buy_url 用的小写 sku；星光白色为 mk2t4ch
+      path: "body.content[0].deliveryMessage.isBuyable"   # true = 已可购买
+      when: "truthy"
+      # 等价备选判据（有货口径略有不同，任选其一）：
+      #   path: "body.content[0].availableAtAnyStore"       + when: "truthy"
+      #   path: "body.content[0].partAvailableStoresCount"  + when: "gt:0"
+
+  # ---- 任意 JSON 接口 ------------------------------------------------------
+  - id: json-template
+    name: 某商城库存接口（模板）
+    kind: generic_json
+    enabled: false
+    interval_seconds: 30
+    url: "https://example.com/api/stock?sku={sku}"
+    buy_url: "https://example.com/item/SKU-0001"
+    match:
+      params:
+        sku: "SKU-0001"
+      path: "data.stock"          # 点路径，支持 items[0].stock 这种写法
+      when: "gt:0"                # 有货 = 库存大于 0
+      price_path: "data.price"    # 可选：有价钱就一起记下来
+
+  # ---- 任意 HTML 页面 ------------------------------------------------------
+  - id: html-template
+    name: 某商品详情页（模板）
+    kind: html_regex
+    enabled: false
+    interval_seconds: 30
+    url: "https://example.com/item/SKU-0001"
+    match:
+      # 出现「加入购物车」且不出现「暂无货/已售罄」→ 判为有货
+      present: "加入购物车"
+      absent: "暂无货|已售罄|停止销售"
+      price_regex: '"price"\s*:\s*"?([0-9.]+)'
+
+  # ---- 本地演示（不联网）---------------------------------------------------
+  # 想立刻看效果：apple-sniper --config-dir demo check
+  - id: demo-iphone
+    name: 演示用 iPhone（mock）
+    kind: mock
+    enabled: false
+    url: "mock://demo-iphone"
+    buy_url: "https://example.com/buy/demo-iphone"
+    match:
+      inventory_file: demo/inventory.json

@@ -1,0 +1,38 @@
+{
+  "proxy": {
+    "enabled": true,
+    "url": "socks5h://127.0.0.1:7890",
+    "autoFallback": true,
+    "bypass": [],
+    "probeTimeoutSec": 15
+  },
+  "remotes": {
+    "github": "origin",
+    "gitee": "gitee"
+  },
+  "dev": {
+    "command": ".venv/bin/python -m apple_sniper --config-dir demo serve --port 8787",
+    "port": 8787,
+    "readyTimeoutMs": 60000
+  },
+  "verify": {
+    "steps": [
+      {
+        "id": "test",
+        "label": "pytest（离线单测）",
+        "command": [".venv/bin/python", "-m", "pytest"]
+      }
+    ],
+    "stopOnFail": true
+  },
+  "release": {
+    "branch": null,
+    "tagPrefix": "v",
+    "requireClean": true,
+    "runVerify": true,
+    "changelog": true
+  },
+  "push": {
+    "tags": true
+  }
+}

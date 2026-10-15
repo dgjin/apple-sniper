@@ -1,0 +1,86 @@
+# apple-sniper 运行参数
+#
+# 用法：cp config/settings.example.yaml config/settings.yaml 后按需修改。
+# 每个键都能用同名环境变量覆盖（前缀 APPLE_SNIPER_），例如临时调快节奏：
+#   APPLE_SNIPER_INTERVAL_SECONDS=15 apple-sniper watch
+
+# 默认轮询间隔（秒）。单个目标可用 targets.yaml 里的 interval_seconds 覆盖。
+interval_seconds: 30
+# 抖动比例：实际间隔在 1.0~1.3 倍之间随机，避免所有请求落在整齐的同一秒。
+jitter_ratio: 0.3
+# 同一主机两次请求的最小间隔（秒）——比 interval_seconds 更硬的底线。
+min_host_interval_seconds: 3
+# 同一主机的平均速率上限（次/分钟），由令牌桶控制。
+max_requests_per_minute: 20
+
+# 单次请求超时（秒）与重试次数。只重试 429/408/425/5xx，且尊重 Retry-After。
+timeout_seconds: 10
+retries: 2
+backoff_base_seconds: 1
+
+# 状态库（SQLite）。相对路径按**项目根**解析，不受当前目录影响。
+state_db: data/apple_sniper.db
+
+# 出口代理。**留空 = 直连**，刻意忽略 macOS 系统代理——本机系统代理会打断
+# api.day.app 的 TLS 握手（走代理必失败），而三个目标站点直连都正常。
+# 需要走代理时才填，例如：http_proxy: "http://127.0.0.1:7890"
+# http_proxy: ""
+
+# 无变化时的心跳快照间隔（秒）：既保证库里有近期时间点，又不会把库写爆。
+heartbeat_seconds: 600
+# 「持续抓取失败」重复告警的冷却（秒）。到货/无货这类状态转移不受它影响。
+renotify_cooldown_seconds: 900
+
+# 心跳**通知**间隔（秒）：0 = 关。到点推一条「监控仍在运行：N 个目标（无货 6）」的汇总，
+# 用来区分「还没到货」和「监控悄悄挂了」。节流记在状态库里，所以每轮一个新进程的
+# check（cron/launchd）也能正确按间隔推。**要真正收到，还得把 heartbeat 加进 notify_kinds。**
+notify_heartbeat_seconds: 0
+
+# 命中（已到货）后的动作。默认都关着——先看清通知质量，再决定要不要自动跳转。
+open_url_on_hit: false
+# command_on_hit: "/usr/bin/afplay /System/Library/Sounds/Glass.aiff"
+# 语音播报（念「门店 + 已到货」；脚本后台调用 say，不拖慢命中动作）：
+# command_on_hit: "/绝对路径/apple-sniper/scripts/say-hit.sh"
+#   可用 APPLE_SNIPER_VOICE 换音色，默认 Tingting（macOS 自带中文女声）。
+
+# 升级提醒：命中后把同一条到货通知重复推 N 次、每次隔几秒，免得开会/锁屏时错过。
+# 这是「重复提醒」不是「反复探测」——不改请求频率，只是多推几次通知。
+# escalate_repeats 含第一次：默认 1 = 只推一次（保持原行为）。
+escalate_repeats: 1
+escalate_interval_seconds: 5
+
+# 哪些事件需要通知。（heartbeat = 周期心跳汇总，需配合 notify_heartbeat_seconds 使用）
+notify_kinds:
+  - back_in_stock
+  - out_of_stock
+  - price_drop
+  - error
+
+# 通知渠道，可叠加多个；任何一个渠道失败都不影响其它渠道。
+channels:
+  - kind: console
+  - kind: macos
+    title: apple-sniper
+    sound: Glass            # default = 系统默认音；也可写提示音绝对路径
+  # --- 手机推送（Bark，iOS 常用）---
+  # - kind: webhook
+  #   url: "https://api.day.app/<你的key>"
+  #   template: bark
+  # --- 飞书群机器人 ---
+  # - kind: webhook
+  #   url: "https://open.feishu.cn/open-apis/bot/v2/hook/<token>"
+  #   template: feishu
+  #   # 机器人开了「签名校验（加签）」才需要 secret；发送时会带 timestamp + sign。
+  #   # 漏填的表现是飞书回 code=19021，并记为一次通知失败。
+  #   secret: "<加签密钥>"
+  # --- 企业微信群机器人 ---
+  # - kind: webhook
+  #   url: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=<key>"
+  #   template: wecom
+  # --- 钉钉群机器人 ---
+  # - kind: webhook
+  #   url: "https://oapi.dingtalk.com/robot/send?access_token=<token>"
+  #   template: dingtalk
+  # --- 任意命令（事件字段通过 APPLE_SNIPER_* 环境变量传入，不经 shell）---
+  # - kind: command
+  #   command: "/usr/bin/say 已经到货了"
