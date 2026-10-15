@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- 常驻本地只读看板（http://127.0.0.1:8787）。与 check 用的 plist 相互独立。
+     安装：
+       cp scripts/com.dgjin.apple-sniper.dashboard.plist ~/Library/LaunchAgents/
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dgjin.apple-sniper.dashboard.plist
+     卸载：
+       launchctl bootout gui/$(id -u)/com.dgjin.apple-sniper.dashboard
+     重启（改完本文件后必须重载才生效）：
+       launchctl bootout gui/$(id -u)/com.dgjin.apple-sniper.dashboard
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dgjin.apple-sniper.dashboard.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dgjin.apple-sniper.dashboard</string>
+
+    <!-- 用绝对路径的虚拟环境 Python；--log-level 是全局选项，必须放在子命令 serve 之前 -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/dgjin/dgjinapp/apple-sniper/.venv/bin/python</string>
+        <string>-m</string>
+        <string>apple_sniper</string>
+        <string>--config-dir</string>
+        <string>/Users/dgjin/dgjinapp/apple-sniper/config</string>
+        <string>--log-level</string>
+        <string>WARNING</string>
+        <string>serve</string>
+        <string>--host</string>
+        <string>127.0.0.1</string>
+        <string>--port</string>
+        <string>8787</string>
+    </array>
+
+    <!-- 相对路径（state_db 等）按项目根解析；显式设工作目录更稳 -->
+    <key>WorkingDirectory</key>
+    <string>/Users/dgjin/dgjinapp/apple-sniper</string>
+
+    <!-- 常驻：进程退出或被强杀后自动拉起 -->
+    <key>KeepAlive</key>
+    <true/>
+    <key>RunAtLoad</key>
+    <true/>
+    <!-- 崩溃重启节流（端口被占用等情况下避免疯狂重启刷日志） -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <!-- 跑在图形登录会话里，避免会话隔离导致进程被回收 -->
+    <key>LimitLoadToSessionType</key>
+    <string>Aqua</string>
+
+    <key>StandardOutPath</key>
+    <string>/Users/dgjin/dgjinapp/apple-sniper/data/launchd.dashboard.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/dgjin/dgjinapp/apple-sniper/data/launchd.dashboard.err.log</string>
+</dict>
+</plist>

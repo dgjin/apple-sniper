@@ -63,7 +63,7 @@ cp config/targets.example.yaml  config/targets.yaml
 .venv/bin/python -m apple_sniper watch                    # 持续轮询，命中即通知（Ctrl-C 退出）
 .venv/bin/python -m apple_sniper history -n 30            # 查看事件历史与最新状态
 .venv/bin/python -m apple_sniper forget --target <目标id> # 清空该目标历史，重新开始
-.venv/bin/python -m apple_sniper serve --port 8787        # 本地只读看板（需 dashboard 额外依赖）
+.venv/bin/python -m apple_sniper serve --port 8787        # 本地只读看板（需 dashboard 额外依赖；常驻见「常驻看板」）
 ```
 
 安装为命令后可直接用 `apple-sniper ...`；不安装也可用 `python -m apple_sniper ...`。
@@ -114,6 +114,26 @@ Linux（或已给 cron 授权）就直接 crontab：
 
 想在人不在电脑前也收到提醒（点一下直接跳购买页），接一个 webhook 渠道（飞书 / Bark），
 见下面「通知渠道」。
+
+### 常驻看板（`http://127.0.0.1:8787`）
+
+`serve` 是只读看板：接口全是 GET、只绑 `127.0.0.1`（不暴露到局域网），并且**每请求现读 SQLite**——
+所以 `check` 每跑一轮它都会自动跟着刷新，不会缓存旧状态。要它在后台**一直开着**，用 launchd 常驻
+（`KeepAlive`，进程崩溃或被杀会自动拉起）：
+
+```bash
+cp scripts/com.dgjin.apple-sniper.dashboard.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dgjin.apple-sniper.dashboard.plist
+launchctl print   gui/$(id -u)/com.dgjin.apple-sniper.dashboard | grep -E 'state|pid|runs'  # 看状态
+launchctl bootout gui/$(id -u)/com.dgjin.apple-sniper.dashboard                              # 停止常驻
+```
+
+它读的是 **`config/` 里的真实目标**（不是 demo），日志在 `data/launchd.dashboard.{out,err}.log`。
+plist 里用 `--log-level WARNING` 关掉了 uvicorn 的访问日志，所以这两个文件不会无限增长。
+改完 plist 需 `bootout` + `bootstrap` 重载才生效。
+
+注意端口：常驻看板占了 `8787`，于是 `wb dev`（那台用 `demo/` 配置的看板）已挪到 **8788**，
+见 `.wb/config.json`。临时看 demo 数据用 `wb dev`，看真实监控状态直接开 `http://127.0.0.1:8787`。
 
 ---
 
@@ -287,6 +307,7 @@ scripts/hit-drill.sh     命中演练：用真实渠道发合成「已到货」
 scripts/cron-check.sh    定时入口（给 launchd/cron 调用，含防重入锁与日志轮转）
 scripts/window-mode.sh   窗口期一键收紧/恢复（on / off / status）
 scripts/say-hit.sh       命中语音播报（command_on_hit 调用）
+scripts/*.plist          launchd 任务定义：check（定时检查）/ dashboard（常驻看板）
 tests/             pytest 用例（全部离线：mock 来源 + MockTransport + 假时钟）
 ```
 

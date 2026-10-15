@@ -11,8 +11,8 @@
     "gitee": "gitee"
   },
   "dev": {
-    "command": ".venv/bin/python -m apple_sniper --config-dir demo serve --port 8787",
-    "port": 8787,
+    "command": ".venv/bin/python -m apple_sniper --config-dir demo serve --port 8788",
+    "port": 8788,
     "readyTimeoutMs": 60000
   },
   "verify": {
