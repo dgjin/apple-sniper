@@ -26,7 +26,6 @@ export interface Department {
 
 export type ResourceType = 'ROOM' | 'DESK';
 export type ResourceStatus = 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE' | 'PENDING';
-export type RoomFeature = 'VIDEO' | 'DISPLAY' | 'WHITEBOARD';
 
 export interface Resource {
   id: string;
@@ -34,7 +33,6 @@ export interface Resource {
   type: ResourceType;
   capacity?: number;
   location: string;
-  campus?: string;
   features: string[];
   status: ResourceStatus;
 }
@@ -45,43 +43,11 @@ export interface ApprovalNode {
   id: string;
   name: string;
   approverRole: Role;
-  departmentIds?: string[];
-  campuses?: string[];
-}
-
-export interface WorkflowVersion {
-  version: number;
-  nodes: ApprovalNode[];
-  createdAt: string;
-  createdBy: string;
-}
-
-export interface ApprovalDelegate {
-  id: string;
-  delegatorId: string;
-  delegateId: string;
-  startsAt: string;
-  endsAt: string;
-  createdAt: string;
-  createdBy: string;
-}
-
-export interface AuditEvent {
-  id: string;
-  actorId?: string;
-  action: string;
-  entityType: string;
-  entityId: string;
-  details: Record<string, unknown>;
-  createdAt: string;
 }
 
 export interface ApprovalRecord {
   nodeName: string;
   approverName: string;
-  approverId?: string;
-  delegatorName?: string;
-  delegatorId?: string;
   status: 'APPROVED' | 'REJECTED';
   timestamp: string;
   comment?: string;
@@ -98,25 +64,17 @@ export interface Booking {
   purpose: string;
   participants?: number;
   createdAt: string;
-  currentNodeIndex: number;
+  currentNodeIndex: number; 
   approvalHistory: ApprovalRecord[];
-  workflowVersion?: number;
-  approvalWorkflow?: ApprovalNode[];
-  requesterDepartmentId?: string;
-  resourceCampus?: string;
+  // New optional fields
   hasLeader?: boolean;
   leaderDetails?: string;
   isVideoConference?: boolean;
   needsTeaService?: boolean;
-  requiredFeatures?: RoomFeature[];
   attendeeIds?: string[];
   seriesId?: string;
   recurrenceIndex?: number;
-  recurrence?: { frequency: 'DAILY' | 'WEEKLY' | 'BIWEEKLY'; count: number };
-  seriesKind?: 'LONG_TERM';
-  seriesEndDate?: string;
-  renewalOfSeriesId?: string;
-  rootSeriesId?: string;
+  recurrence?: { frequency: 'WEEKLY' | 'BIWEEKLY'; count: number };
   checkedInAt?: string;
   endedEarlyAt?: string;
   noShow?: boolean;
